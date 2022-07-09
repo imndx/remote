@@ -59,7 +59,7 @@ process.on('exit', () => {
 const IS_REMOTE_PROXY = Symbol('is-remote-proxy')
 
 // Convert the arguments object into an array of meta data.
-function wrapArgs (args: any[], visited = new Set()): MetaTypeFromRenderer[] {
+function wrapArgs (args: any[], visited = new Set(), memberName = ''): MetaTypeFromRenderer[] {
   const valueToMeta = (value: any): MetaTypeFromRenderer => {
     // Check for circular reference.
     if (visited.has(value)) {
@@ -124,6 +124,17 @@ function wrapArgs (args: any[], visited = new Set()): MetaTypeFromRenderer[] {
         value: valueToMeta(value())
       }
     } else if (typeof value === 'function') {
+      if (memberName){
+        if (memberName.indexOf('Listener') >= 0){
+          //@ts-ignore
+          value.__ttl = 0;
+        } else {
+          //@ts-ignore
+          value.__ttl = 5 * 60 * 1000;
+        }
+        //@ts-ignore
+        value.__memberName = memberName;
+      }
       return {
         type: 'function',
         id: callbacksRegistry.add(value),
@@ -158,7 +169,7 @@ function setObjectMembers (ref: any, object: any, metaId: number, members: Objec
         } else {
           command = IPC_MESSAGES.BROWSER_MEMBER_CALL
         }
-        const ret = ipcRenderer.sendSync(command, contextId, metaId, member.name, wrapArgs(args))
+        const ret = ipcRenderer.sendSync(command, contextId, metaId, member.name, wrapArgs(args, new Set(), member.name))
         return metaToValue(ret)
       }
 

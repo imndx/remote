@@ -4,6 +4,19 @@ export class CallbacksRegistry {
   private callbacks: Record<number, Function> = {}
   private callbackIds = new WeakMap<Function, number>();
   private locationInfo = new WeakMap<Function, string>();
+  private clearInternal = setInterval(() => {
+      let now = new Date().getTime();
+      for (const cbId in this.callbacks) {
+          let cb = this.callbacks[cbId];
+          //@ts-ignore
+          if (cb && cb.__ttl && cb.__ttl > 0 && now - cb.__timestamp > cb.__ttl){
+              console.log('----to clear callback----', cbId, cb);
+              this.callbackIds.delete(cb);
+              this.locationInfo.delete(cb);
+              delete this.callbacks[cbId];
+          }
+      }
+  }, 30 * 1000)
 
   add (callback: Function): number {
     // The callback is already added.
@@ -36,7 +49,14 @@ export class CallbacksRegistry {
       break
     }
 
-    this.locationInfo.set(callback, filenameAndLine!);
+   //@ts-ignore
+    callback.__id = id;
+    //@ts-ignore
+    callback.__filenameAndLine = filenameAndLine!;
+    //@ts-ignore
+    callback.__timestamp = new Date().getTime();
+
+      this.locationInfo.set(callback, filenameAndLine!);
     return id
   }
 
